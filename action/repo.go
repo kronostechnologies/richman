@@ -1,4 +1,4 @@
-package main
+package action
 
 type Chart struct {
 	name string
