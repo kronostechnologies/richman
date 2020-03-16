@@ -3,7 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"github.com/konostechnologies/richman/action"
+	"github.com/kronostechnologies/richman/action"
 	"github.com/spf13/cobra"
 	"os"
 )

@@ -2,7 +2,7 @@ package main
 
 import (
 	"os"
-	"github.com/konostechnologies/richman/cmd"
+	"github.com/kronostechnologies/richman/cmd"
 )
 
 func main() {

@@ -1,4 +1,4 @@
-module github.com/konostechnologies/richman
+module github.com/kronostechnologies/richman
 
 go 1.13
 
