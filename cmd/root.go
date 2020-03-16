@@ -11,10 +11,8 @@ var rootCmd = &cobra.Command{
 	//SilenceUsage: true,
 }
 
-
-var Apply bool
-
 func init() {
+	rootCmd.AddCommand(appsCmd)
 	rootCmd.AddCommand(chartCmd)
 }
 

@@ -60,3 +60,12 @@ func CreateAppMatchers(s []string) []Matcher {
 
 	return matchers
 }
+
+func findMatch(name string, chartFilters []Matcher) bool {
+	for _, matcher := range chartFilters {
+		if matcher.Matches(name) {
+			return true
+		}
+	}
+	return false
+}

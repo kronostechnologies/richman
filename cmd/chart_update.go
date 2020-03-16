@@ -10,8 +10,8 @@ import (
 
 var chartUpdateCmd = &cobra.Command{
 	Use:   "update FILENAME",
-	Short: "Chart Update ops",
-	Long:  "Long Chart Ops",
+	Short: "update charts",
+	Long:  "Update helm charts in helmsman manifest",
 	Args: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
 			return errors.New("filename required")

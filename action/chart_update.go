@@ -66,6 +66,10 @@ func updateCommand(apps *toml.Tree, o *ChartUpdate) error {
 
 		if noFilter || findMatch(name, appMatchers) || findMatch(chartName, chartMatchers) {
 			chart := getHelmChart(chartName)
+			if chart == nil {
+				return fmt.Errorf("%s has no repository", chartName)
+			}
+
 			repoVersion := chart.version
 
 			if hasUpdate(localVersion, repoVersion) {
@@ -148,13 +152,4 @@ func hasUpdate(current string, upstream string) bool {
 	v, _ := semver.NewVersion(upstream)
 
 	return c.Check(v)
-}
-
-func findMatch(name string, chartFilters []Matcher) bool {
-	for _, matcher := range chartFilters {
-		if matcher.Matches(name) {
-			return true
-		}
-	}
-	return false
 }
