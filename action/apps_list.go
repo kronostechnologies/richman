@@ -71,15 +71,16 @@ func listCommand(apps *toml.Tree, o *AppsList) error {
 func getVersions(name string, app *toml.Tree) map[string]string {
 	var list = make(map[string]string)
 
-	re := regexp.MustCompile(`^(?:(?P<name>[^.]*)\.)?image\.tag$`)
+	re := regexp.MustCompile(`^(?:([^.]*)\.)?image\.tag$`)
 
 	if sS, ok := app.Get("setString").(*toml.Tree); ok == true {
 
 		for chartKey, chartVal := range sS.ToMap() {
 			var listKey string
 
-			if subchart := re.FindStringSubmatch(chartKey)[1]; subchart != "" {
-				listKey = strings.Join([]string{name, subchart}, ".")
+			substrings := re.FindStringSubmatch(chartKey)
+			if len(substrings) != 0 && substrings[1] != "" {
+				listKey = strings.Join([]string{name, substrings[1]}, ".")
 			} else {
 				listKey = name
 			}
