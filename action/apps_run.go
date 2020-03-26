@@ -71,7 +71,7 @@ func (c *AppsRun) Run() error {
 	jobTemplate := template.Must(template.New("configmap").Funcs(sprig.TxtFuncMap()).Parse(configMap))
 	templateFields := ListTemplateFields(jobTemplate)
 
-	user, err := getKubeUser(kubeContext)
+	user, err := getUser(kubeContext)
 	if err != nil {
 		return err
 	}
@@ -253,22 +253,29 @@ func getConfigMap(ctx *KubeContext) (string, error) {
 	return string(out), nil
 }
 
-func getKubeUser(ctx *KubeContext) (string, error) {
-	username, err := exec.Command("kubectl", "config", "view", "-o", "jsonpath={ .contexts[?(@.name == \""+ctx.Context+"\")].context.user }").Output()
+func getUser(ctx *KubeContext) (string, error) {
+	findKubeUserRegex := regexp.MustCompile(`:([^:@]+)@`)
+
+	out, err := exec.Command("kubectl", "config", "view", "-o", "jsonpath={ .contexts[?(@.name == \""+ctx.Context+"\")].context.user }").Output()
 	if err != nil {
 		return "", err
 	}
 
-	return formatUsername(string(username)), nil
+	matches := findKubeUserRegex.FindStringSubmatch(string(out))
+	var username string
+	if len(matches) == 2 && matches[1] != "" {
+		username = matches[1]
+	} else {
+		username = os.Getenv("USER")
+	}
+
+	return formatUsername(username), nil
 }
 
 func formatUsername(username string) string {
-	findUserRegex := regexp.MustCompile(`:([^:@]+)@`)
-
-	kubeUsername := findUserRegex.FindStringSubmatch(username)[1]
-	lowerUsername := strings.ToLower(kubeUsername)
-
 	invalidCharactersRegex := regexp.MustCompile(`[^a-z0-9-]`)
+
+	lowerUsername := strings.ToLower(username)
 
 	return invalidCharactersRegex.ReplaceAllString(lowerUsername, "-")
 }
