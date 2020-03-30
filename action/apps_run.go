@@ -107,10 +107,11 @@ func (c *AppsRun) Run() error {
 
 	wpe := waitPod(kubeContext, jobContext)
 	if wpe == nil {
-		ace := attachContainer(kubeContext, jobContext)
-		if ace != nil {
-			fmt.Fprintln(os.Stderr, ace)
+		var ace error
+		for ace == nil {
+			ace = attachContainer(kubeContext, jobContext)
 		}
+		fmt.Fprintln(os.Stderr, ace)
 	}
 
 	dje := deleteJob(kubeContext, jobContext)
