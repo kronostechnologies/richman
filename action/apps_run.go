@@ -1,6 +1,7 @@
 package action
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -106,26 +107,71 @@ func (c *AppsRun) Run() error {
 	}()
 
 	wpe := waitPod(kubeContext, jobContext)
+
+	deleteOnExit := false
+
 	if wpe == nil {
-		var ace error
-		for ace == nil {
-			ace = attachContainer(kubeContext, jobContext)
+		attach := true
+		for attach {
+			ace := attachContainer(kubeContext, jobContext)
+
+			time.Sleep(1 * time.Second)
+
+			state, _ := getPodState(kubeContext, jobContext)
+			if strings.Contains(state, "Succeeded") {
+				deleteOnExit = true
+				break
+			}
+
+			if ace != nil {
+				fmt.Fprintln(os.Stderr, ace.Error())
+			}
+
+			c := promptChoice("kubectl has detached from " + state + " container. Attach, delete or quit (A/d/q)?")
+			var option rune
+			if len(c) == 0 {
+				option = 'a'
+			} else {
+				option = []rune(strings.ToLower(c))[0]
+			}
+
+			switch option {
+			case 'q':
+				attach = false
+			case 'd':
+				attach = false
+				deleteOnExit = true
+			}
 		}
-		fmt.Fprintln(os.Stderr, ace)
 	}
 
-	dje := deleteJob(kubeContext, jobContext)
+	if deleteOnExit {
+		return deleteJob(kubeContext, jobContext)
+	}
 
-	return dje
+	return nil
 }
 
-func waitPod(kubeCtx *KubeContext, jobCtx *JobContext) error {
+func promptChoice(message string) string {
+	scanner := bufio.NewScanner(os.Stdin)
+	fmt.Fprintf(os.Stderr, "\n%s ", strings.TrimSpace(message))
+	scanner.Scan()
+
+	return strings.TrimSpace(scanner.Text())
+}
+
+func getPodState(kubeContext *KubeContext, jobContext *JobContext) (string, error) {
+	cmd := exec.Command("kubectl","--context", kubeContext.Context, "--namespace", kubeContext.Namespace, "get", "pod", jobContext.Pod, "-o", "jsonpath='{ .status.phase }'")
+	out, ce := cmd.Output()
+	return string(out), ce
+}
+
+func waitPod(kubeContext *KubeContext, jobContext *JobContext) error {
 	tries := 1
-	maxTries := 60
+	maxTries := 75
 
 	for tries <= maxTries {
-		cmd := exec.Command("kubectl","--context", kubeCtx.Context, "--namespace", kubeCtx.Namespace, "get", "pod", jobCtx.Pod, "-o", "jsonpath='{ .status.phase }'")
-		out, ce := cmd.Output()
+		out, ce := getPodState(kubeContext, jobContext)
 
 		if ce != nil {
 			if ee, ok := ce.(*exec.ExitError); ok {
@@ -134,7 +180,7 @@ func waitPod(kubeCtx *KubeContext, jobCtx *JobContext) error {
 			return ce
 		}
 
-		if strings.TrimSpace(string(out)) == "'Running'" {
+		if strings.Contains(out, "Running") {
 			break
 		}
 
@@ -152,6 +198,8 @@ func attachContainer(kubeCtx *KubeContext, jobCtx *JobContext) error {
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+
+	fmt.Println("Use Ctrl-P,Ctrl-Q to detach from container")
 
 	return cmd.Run()
 }
