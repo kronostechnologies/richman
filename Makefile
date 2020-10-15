@@ -1,5 +1,5 @@
 GITCOMMIT := $(shell git describe --always)
-VERSION := $(shell git describe --tags 2>/dev/null || git describe --always)
+VERSION := $(shell git describe --tags 2>/dev/null || echo "latest")
 PROJECTNAME := $(shell basename "$(PWD)")
 
 GOBASE := $(shell pwd)

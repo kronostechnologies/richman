@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/spf13/cobra"
 )
 
+var Version = "latest"
+var GitCommit = "hook"
 var rootCmd = &cobra.Command{
 	Use:          "richman",
 	Short:        "Helmsman repository manager tool",
@@ -12,9 +15,9 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
+	rootCmd.Version = fmt.Sprintf("%s-%s", Version, GitCommit)
 	rootCmd.AddCommand(appsCmd)
 	rootCmd.AddCommand(chartCmd)
-	rootCmd.AddCommand(versionCmd)
 }
 
 func Execute() error {
