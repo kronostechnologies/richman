@@ -14,7 +14,7 @@ all: setup check test compile package
 
 .PHONY: setup
 setup:
-	@echo "  > Fetching dependencies..."
+	@echo ">>> Fetching dependencies..."
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go get
 
 .PHONY: check
@@ -22,18 +22,25 @@ check:
 
 .PHONY: test
 test: setup
-	@echo "  > Running Test Suite..."
+	@echo ">>> Running Test Suite..."
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go test -v ./...
 
 .PHONY: compile
 compile:
-	@echo "  > Compiling..."
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build $(LDFLAGS) -o $(GOBIN)/$(PROJECTNAME) $(GOFILES)
-	@echo "  > Source available at $(GOBIN)/$(PROJECTNAME)"
+	@echo ">>> Compiling..."
+	GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build $(LDFLAGS) -o $(GOBIN)/$(PROJECTNAME) $(GOFILES)
+	@echo ">>> Source available at $(GOBIN)/$(PROJECTNAME)"
+
+clean:
+	@echo ">>> Cleaning..."
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go clean
+	@rm -rf $(GOBIN)
 
 .PHONY: package
 package: package.image
 
 .PHONY: package.image
 package.image:
+	@echo ">>> Building docker image $(PROJECTNAME):$(VERSION)"
+	docker build . -t $(PROJECTNAME):$(VERSION)
 
