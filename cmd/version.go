@@ -5,8 +5,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var Version = ""
-var GitCommit = ""
+var Version = "latest"
+var GitCommit = "HEAD"
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Version information",
