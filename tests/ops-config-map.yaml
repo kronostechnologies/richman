@@ -1,0 +1,63 @@
+apiVersion: v1
+data:
+  template: |-
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: {{ .name }}-ops-job
+      labels:
+        app.kubernetes.io/component: ops
+        app.kubernetes.io/name: equisoft-connect
+        helm.sh/chart: equisoft-connect-3.8.2
+        app.kubernetes.io/instance: equisoft-connect
+        app.kubernetes.io/version: "version-9.25.0-0"
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      #ttlSecondsAfterFinished: 30 feature unavailable
+      backoffLimit: 0
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: equisoft-connect
+            app.kubernetes.io/instance: equisoft-connect
+            app.kubernetes.io/component: ops
+          annotations:
+            checksum/local: dfe41f1b868b65789fc76f048e8129a12ecbd26bda2517e9783409c92ede7361
+        spec:
+          restartPolicy: Never
+          nodeSelector:
+            kops.k8s.io/instancegroup: ops
+          tolerations:
+          - key: dedicated
+            value: ops
+            operator: "Equal"
+            effect: NoSchedule
+          containers:
+            - name: equisoft-connect-ops
+              tty: true
+              stdin: true
+              image: 611542441284.dkr.ecr.us-east-1.amazonaws.com/crm-worker:version-9.25.0-0
+              imagePullPolicy: IfNotPresent
+              args: ["/bin/bash"]
+              env:
+                - name: EYAMLDECRYPT_PUBLIC_KEY
+                  value: "/etc/kronos/crm/public_key.pkcs7.pem"
+                - name: EYAMLDECRYPT_PRIVATE_KEY
+                  value: "/etc/kronos/crm/private_key.pkcs7.pem"
+                - name: CRONLINKER_ENVIRONMENT
+                  value: "accp"
+                - name: CRONLINKER_SITE
+                  value: "aws-kt"
+              resources:
+                requests:
+                    cpu: "{{ default "0.1" .cpu }}"
+                    memory: "{{ default "512Mi" .memory }}"
+                limits:
+                    cpu: "{{ default "0.1" .cpu }}"
+                    memory: "{{ default "512Mi" .memory }}"
+kind: ConfigMap
+metadata:
+  labels:
+    richman/role: job-template
+  name: default-ops
+  namespace: default
