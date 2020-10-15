@@ -14,6 +14,7 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(appsCmd)
 	rootCmd.AddCommand(chartCmd)
+	rootCmd.AddCommand(versionCmd)
 }
 
 func Execute() error {
