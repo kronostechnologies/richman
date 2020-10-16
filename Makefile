@@ -19,6 +19,8 @@ setup:
 
 .PHONY: check
 check:
+	@echo ">>> Checking go..."
+	@command -v go >/dev/null 2>&1 || { echo "go is not installed. Install it https://golang.org/doc/install."; exit 1; }
 
 .PHONY: test
 test: setup
