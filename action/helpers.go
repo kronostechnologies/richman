@@ -44,7 +44,7 @@ func listNodeFields(node parse.Node, res []TemplateField) []TemplateField {
 }
 
 func NewField (node string) TemplateField {
-	re := regexp.MustCompile(`^{{(?:default\s+([^\s]+)\s+)?\.([a-z0-9]+)}}$`)
+	re := regexp.MustCompile(`^{{(?:default\s+([^\s]+)\s+)?\.([a-zA-Z0-9]+)}}$`)
 
 	submatches := re.FindStringSubmatch(node)
 
