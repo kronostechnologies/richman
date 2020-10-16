@@ -33,6 +33,7 @@ compile: setup
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build $(LDFLAGS) -o $(GOBIN)/$(PROJECTNAME) $(GOFILES)
 	@echo ">>> Source available at $(GOBIN)/$(PROJECTNAME)"
 
+.PHONY: clean
 clean:
 	@echo ">>> Cleaning..."
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go clean
