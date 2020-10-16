@@ -10,7 +10,7 @@ GOFILES := $(wildcard *.go)
 LDFLAGS=-ldflags="-X 'github.com/kronostechnologies/richman/cmd.Version=$(VERSION)' -X 'github.com/kronostechnologies/richman/cmd.GitCommit=$(GITCOMMIT)' $(EXTRA_LDFLAGS)"
 
 .PHONY: all
-all: setup check test compile package
+all: setup check test compile
 
 .PHONY: setup
 setup: check
