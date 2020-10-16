@@ -30,7 +30,7 @@ test: setup
 .PHONY: compile
 compile: setup
 	@echo ">>> Compiling..."
-	GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build $(LDFLAGS) -o $(GOBIN)/$(PROJECTNAME) $(GOFILES)
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build $(LDFLAGS) -o $(GOBIN)/$(PROJECTNAME) $(GOFILES)
 	@echo ">>> Source available at $(GOBIN)/$(PROJECTNAME)"
 
 clean:
