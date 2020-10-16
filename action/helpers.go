@@ -1,6 +1,9 @@
 package action
 
 import (
+	"errors"
+	"fmt"
+	"log"
 	"regexp"
 	"strings"
 	"text/template"
@@ -20,7 +23,11 @@ func ListTemplateFields(t *template.Template) []TemplateField {
 func listNodeFields(node parse.Node, res []TemplateField) []TemplateField {
 	if node.Type() == parse.NodeAction {
 
-		field := NewField(node.String())
+		field, err := NewField(node.String())
+		if err != nil {
+			log.Printf("Error: %s. Skipping node %s", err, node.String())
+			return res
+		}
 
 		add := true
 		for _, v := range res {
@@ -43,14 +50,18 @@ func listNodeFields(node parse.Node, res []TemplateField) []TemplateField {
 	return res
 }
 
-func NewField (node string) TemplateField {
-	re := regexp.MustCompile(`^{{(?:default\s+([^\s]+)\s+)?\.([a-z0-9]+)}}$`)
+func NewField (node string) (TemplateField, error) {
+	re := regexp.MustCompile(`^{{(?:default\s+([^\s]+)\s+)?\.([a-zA-Z0-9]+)}}$`)
 
 	submatches := re.FindStringSubmatch(node)
+	if submatches == nil {
+		err := errors.New(fmt.Sprintf("No match found for string %s", node))
+		return TemplateField{}, err
+	}
 
 	return TemplateField{
 		Name: submatches[2],
 		Default: strings.Trim(submatches[1], "\""),
 		Optional: submatches[1] != "",
-	}
+	}, nil
 }

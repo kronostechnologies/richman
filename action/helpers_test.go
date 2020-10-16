@@ -29,3 +29,13 @@ func TestListNodeField(t *testing.T) {
 		}
 	}
 }
+
+func TestNewFieldAcceptedFormat(t *testing.T) {
+	correctFieldFormat := []string{"{{default \"0.1\" .lowercase}}", "{{default \"0.1\" .lowercase123}}", "{{default \"0.1\" .camelCase}}", "{{default \"0.1\" .camelCase123}}"}
+	for _, s := range correctFieldFormat {
+		_, err := NewField(s)
+		if err != nil {
+			t.Errorf("Field '%s' should not return an error. Got error '%s'", s, err)
+		}
+	}
+}
