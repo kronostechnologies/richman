@@ -13,7 +13,7 @@ LDFLAGS=-ldflags="-X 'github.com/kronostechnologies/richman/cmd.Version=$(VERSIO
 all: setup check test compile package
 
 .PHONY: setup
-setup:
+setup: check
 	@echo ">>> Fetching dependencies..."
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go get
 
@@ -28,7 +28,7 @@ test: setup
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go test -v ./...
 
 .PHONY: compile
-compile:
+compile: setup
 	@echo ">>> Compiling..."
 	GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build $(LDFLAGS) -o $(GOBIN)/$(PROJECTNAME) $(GOFILES)
 	@echo ">>> Source available at $(GOBIN)/$(PROJECTNAME)"
