@@ -40,3 +40,23 @@ Applies and attaches to a "Job" template stored in a ConfigMap
 ```
 richman apps run cluster.toml -a myapp -c cpu="1" -c memory="1G" -c templateparam="value"
 ```
+
+# Development
+## Build and run
+```
+git clone git@github.com:kronostechnologies/richman.git
+cd richman
+make
+./bin/richman
+```
+
+## Run test
+```
+make test
+```
+
+## Build container image
+```
+make package.image
+docker run -it richman:latest
+```
