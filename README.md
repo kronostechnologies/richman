@@ -40,6 +40,7 @@ Applies and attaches to a "Job" template stored in a ConfigMap
 ```
 richman apps run cluster.toml -a myapp -c cpu="1" -c memory="1G" -c templateparam="value"
 ```
+Template parameter values are found in the ops configmap. They are strings like {{ .cpu }} or {{ .memory }} in the ops configmap itself.
 
 # Development
 ## Build and run
