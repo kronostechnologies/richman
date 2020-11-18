@@ -10,7 +10,7 @@ import (
 )
 
 var appsRunCmd = &cobra.Command{
-	Use:   "run FILENAME",
+	Use:   "run [FILENAME]",
 	Short: "run app ops env",
 	Long:  "run app ops env",
 	Args: func(cmd *cobra.Command, args []string) error {
