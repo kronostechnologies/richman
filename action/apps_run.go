@@ -8,6 +8,7 @@ import (
 	"github.com/Masterminds/sprig"
 	"github.com/pelletier/go-toml"
 	"gopkg.in/yaml.v3"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -25,14 +26,14 @@ type AppsRun struct {
 }
 
 type KubeContext struct {
-	Context string
-	Namespace string
+	Context     string
+	Namespace   string
 	Application string
 }
 
 type JobContext struct {
-	Name string
-	Pod string
+	Name      string
+	Pod       string
 	Container string
 }
 
@@ -48,7 +49,6 @@ type JobYaml struct {
 				}
 			}
 		}
-
 	}
 }
 
@@ -59,8 +59,8 @@ func (c *AppsRun) Run() error {
 	}
 
 	kubeContext := &KubeContext{
-		Context: data.Get("settings.kubeContext").(string),
-		Namespace: data.Get("apps." + c.Application + ".namespace").(string),
+		Context:     data.Get("settings.kubeContext").(string),
+		Namespace:   data.Get("apps." + c.Application + ".namespace").(string),
 		Application: c.Application,
 	}
 
@@ -77,7 +77,11 @@ func (c *AppsRun) Run() error {
 		return err
 	}
 
-	c.Config["name"] = fmt.Sprintf("%s-%s", c.Application, user)
+	if name, ok := c.Config["name"]; ok {
+		c.Config["name"] = fmt.Sprintf("%s-%s-%s", c.Application, user, name)
+	} else {
+		c.Config["name"] = fmt.Sprintf("%s-%s", c.Application, user)
+	}
 
 	if ve := validateConfig(templateFields, c.Config); ve != nil {
 		return ve
@@ -88,14 +92,26 @@ func (c *AppsRun) Run() error {
 		return te
 	}
 
-	jobYaml, ae := applyConfig(kubeContext, buf)
-	if ae != nil {
-		return ae
+	tplYaml, te := ioutil.ReadAll(buf)
+	if te != nil {
+		return te
 	}
 
-	jobContext, pe := getJobContext(kubeContext, jobYaml)
-	if pe != nil {
-		return pe
+	jobContext, pe := getJobContext(kubeContext, tplYaml)
+	if pe == nil {
+		fmt.Println("USING ALREADY RUNNING POD")
+	} else {
+		jobYaml, ae := applyConfig(kubeContext, tplYaml)
+		if ae != nil {
+			return ae
+		}
+
+		jobContext, pe = getJobContext(kubeContext, jobYaml)
+		if pe != nil {
+			if ee, ok := pe.(*exec.ExitError); ok {
+				fmt.Fprintf(os.Stderr, "kubectl error: %s", ee.Stderr)
+			}
+		}
 	}
 
 	channel := make(chan os.Signal)
@@ -118,7 +134,7 @@ func (c *AppsRun) Run() error {
 			time.Sleep(1 * time.Second)
 
 			state, _ := getPodState(kubeContext, jobContext)
-			if strings.Contains(state, "Succeeded") {
+			if strings.Contains(state, "Succeeded") || strings.Contains(state, "Failed") {
 				deleteOnExit = true
 				break
 			}
@@ -161,7 +177,7 @@ func promptChoice(message string) string {
 }
 
 func getPodState(kubeContext *KubeContext, jobContext *JobContext) (string, error) {
-	cmd := exec.Command("kubectl","--context", kubeContext.Context, "--namespace", kubeContext.Namespace, "get", "pod", jobContext.Pod, "-o", "jsonpath='{ .status.phase }'")
+	cmd := exec.Command("kubectl", "--context", kubeContext.Context, "--namespace", kubeContext.Namespace, "get", "pod", jobContext.Pod, "-o", "jsonpath='{ .status.phase }'")
 	out, ce := cmd.Output()
 	return string(out), ce
 }
@@ -180,7 +196,7 @@ func waitPod(kubeContext *KubeContext, jobContext *JobContext) error {
 			return ce
 		}
 
-		if strings.Contains(out, "Running") {
+		if strings.Contains(out, "Running") || strings.Contains(out, "Failed") {
 			break
 		}
 
@@ -194,7 +210,7 @@ func waitPod(kubeContext *KubeContext, jobContext *JobContext) error {
 }
 
 func attachContainer(kubeCtx *KubeContext, jobCtx *JobContext) error {
-	cmd := exec.Command("kubectl","--context", kubeCtx.Context, "--namespace", kubeCtx.Namespace, "attach", "-it", jobCtx.Pod, "-c", jobCtx.Container)
+	cmd := exec.Command("kubectl", "--context", kubeCtx.Context, "--namespace", kubeCtx.Namespace, "attach", "-it", jobCtx.Pod, "-c", jobCtx.Container)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -204,9 +220,8 @@ func attachContainer(kubeCtx *KubeContext, jobCtx *JobContext) error {
 	return cmd.Run()
 }
 
-
 func deleteJob(kubeCtx *KubeContext, jobCtx *JobContext) error {
-	cmd := exec.Command("kubectl","--context", kubeCtx.Context, "--namespace", kubeCtx.Namespace, "delete", "job", jobCtx.Name)
+	cmd := exec.Command("kubectl", "--context", kubeCtx.Context, "--namespace", kubeCtx.Namespace, "delete", "job", jobCtx.Name)
 	out, ce := cmd.Output()
 	fmt.Println(string(out))
 
@@ -234,27 +249,24 @@ func getJobContext(ctx *KubeContext, jobYaml []byte) (*JobContext, error) {
 	jobName := jobYamlStruct.Metadata.Name
 	containerName := jobYamlStruct.Spec.Template.Spec.Containers[0].Name
 
-    cmd := exec.Command("kubectl","--context", ctx.Context, "--namespace", ctx.Namespace, "get", "pod", "--selector=job-name=" + jobName, "-o", "jsonpath={ .items[0].metadata.name }")
+	cmd := exec.Command("kubectl", "--context", ctx.Context, "--namespace", ctx.Namespace, "get", "pod", "--selector=job-name="+jobName, "-o", "jsonpath={ .items[0].metadata.name }")
 	out, ce := cmd.Output()
 	podName := strings.TrimSpace(string(out))
 
 	if ce != nil {
-		if ee, ok := ce.(*exec.ExitError); ok {
-			fmt.Fprintf(os.Stderr, "kubectl error: %s", ee.Stderr)
-		}
 		return nil, ce
 	}
 
 	return &JobContext{
-		Name: jobName,
+		Name:      jobName,
 		Container: containerName,
-		Pod: podName,
+		Pod:       podName,
 	}, nil
 }
 
-func applyConfig(ctx *KubeContext, yamlContent *bytes.Buffer) ([]byte, error) {
-	cmd := exec.Command("kubectl","--context", ctx.Context, "--namespace", ctx.Namespace, "apply", "-f", "-", "-o", "yaml")
-	cmd.Stdin = yamlContent
+func applyConfig(ctx *KubeContext, yamlContent []byte) ([]byte, error) {
+	cmd := exec.Command("kubectl", "--context", ctx.Context, "--namespace", ctx.Namespace, "apply", "-f", "-", "-o", "yaml")
+	cmd.Stdin = bytes.NewReader(yamlContent)
 	out, err := cmd.Output()
 
 	if err != nil {

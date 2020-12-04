@@ -38,7 +38,7 @@ otherapp  1.1.15
 ## Run a one-time job for an app
 Applies and attaches to a "Job" template stored in a ConfigMap
 ```
-richman apps run cluster.toml -a myapp -c cpu="1" -c memory="1G" -c templateparam="value"
+richman apps run cluster.toml -a myapp -c name="myjob" -c cpu="1" -c memory="1G" -c templateparam="value"
 ```
 Template parameter values are found in the ops configmap. They are strings like {{ .cpu }} or {{ .memory }} in the ops configmap itself.
 
