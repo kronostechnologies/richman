@@ -7,7 +7,7 @@ GOPATH := $(GOBASE)/vendor:$(GOBASE)
 GOBIN := $(GOBASE)/bin
 GOFILES := $(wildcard *.go)
 
-LDFLAGS=-ldflags="-X 'github.com/kronostechnologies/richman/cmd.Version=$(VERSION)' -X 'github.com/kronostechnologies/richman/cmd.GitCommit=$(GITCOMMIT)' $(EXTRA_LDFLAGS)"
+LDFLAGS=-ldflags="-X 'main.version=$(VERSION)' $(EXTRA_LDFLAGS)"
 
 .PHONY: all
 all: setup check test compile
@@ -38,12 +38,3 @@ clean:
 	@echo ">>> Cleaning..."
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go clean
 	@rm -rf $(GOBIN)
-
-.PHONY: package
-package: package.image
-
-.PHONY: package.image
-package.image:
-	@echo ">>> Building docker image $(PROJECTNAME):$(VERSION)"
-	docker build . -t $(PROJECTNAME):$(VERSION)
-
