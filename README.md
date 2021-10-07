@@ -61,3 +61,5 @@ make test
 make package.image
 docker run -it richman:latest
 ```
+
+DO I HAVE WRITE PERMISSIONS ?
