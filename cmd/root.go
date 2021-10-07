@@ -13,6 +13,7 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(appsCmd)
 	rootCmd.AddCommand(chartCmd)
+	rootCmd.AddCommand(imageCmd)
 }
 
 func SetVersion(version string) {
