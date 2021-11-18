@@ -1,18 +1,15 @@
 package action
 
-import (
+/*import (
 	"fmt"
-	"github.com/pelletier/go-toml"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/pelletier/go-toml"
 )
 
-type AppsList struct {
-	Filename     string
-	AppFilters   []string
-}
 
 func (c *AppsList) Run() error {
 	data, err := toml.LoadFile(c.Filename)
@@ -24,7 +21,6 @@ func (c *AppsList) Run() error {
 	if err = listCommand(apps, c); err != nil {
 		return err
 	}
-
 
 	return nil
 }
@@ -53,7 +49,7 @@ func listCommand(apps *toml.Tree, o *AppsList) error {
 		}
 	}
 
-	fmt.Printf("%-" + strconv.Itoa(width) + "s  %s\n", "APP", "VERSION")
+	fmt.Printf("%-"+strconv.Itoa(width)+"s  %s\n", "APP", "VERSION")
 
 	var keys []string
 	for k, _ := range versions {
@@ -62,7 +58,7 @@ func listCommand(apps *toml.Tree, o *AppsList) error {
 
 	sort.Strings(keys)
 	for _, x := range keys {
-			fmt.Printf("%-" + strconv.Itoa(width) + "s  %s\n", x, versions[x])
+		fmt.Printf("%-"+strconv.Itoa(width)+"s  %s\n", x, versions[x])
 	}
 
 	return nil
@@ -83,7 +79,7 @@ func getVersions(name string, app *toml.Tree) map[string]string {
 				continue
 			}
 
-			if  subchart := substrings[1] ; subchart != "" {
+			if subchart := substrings[1]; subchart != "" {
 				listKey = strings.Join([]string{name, subchart}, ".")
 			} else {
 				listKey = name
@@ -95,3 +91,4 @@ func getVersions(name string, app *toml.Tree) map[string]string {
 	}
 	return list
 }
+*/

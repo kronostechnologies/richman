@@ -13,6 +13,9 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.1 // indirect
 	github.com/pelletier/go-toml v1.8.1
 	github.com/spf13/cobra v1.1.0
-	golang.org/x/crypto v0.0.0-20201012173705-84dcc777aaee // indirect
-	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+	k8s.io/api v0.22.4
+	k8s.io/apimachinery v0.22.4
+	k8s.io/client-go v0.22.4
+	k8s.io/klog v1.0.0
 )

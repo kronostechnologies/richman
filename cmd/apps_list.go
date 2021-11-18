@@ -2,39 +2,34 @@ package cmd
 
 import (
 	"errors"
-	"fmt"
+
 	"github.com/kronostechnologies/richman/action"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 var appsListCmd = &cobra.Command{
-	Use:   "list FILENAME",
+	Use:   "list apps and their versions",
 	Short: "list app versions",
 	Long:  "List app versions",
 	Args: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
-			return errors.New("filename required")
+			//TODO : Default to current context
+			return errors.New("too few arguments")
 		}
-		if _, err := os.Stat(args[0]); !os.IsNotExist(err) {
-			return nil
-		}
-
-		return fmt.Errorf("invalid filename specified: %s", args[0])
+		return nil
+		//return fmt.Errorf("a generic error here: %s", args[0])
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		app_filters, _ := cmd.Flags().GetStringArray("app")
 
-		c := action.AppsList{
-			Filename:     args[0],
-			AppFilters:   app_filters,
+		filters := action.AppFilters{
+			Filters: app_filters,
 		}
 
-		return c.Run()
+		return action.Run(filters)
 	},
-
 }
 
-func init(){
-	appsListCmd.Flags().StringArrayP( "app",  "a", []string{}, "select app by name")
+func init() {
+	appsListCmd.Flags().StringArrayP("app", "a", []string{}, "select app by name")
 }
