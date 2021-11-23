@@ -39,13 +39,13 @@ func printApps(appsList *v1.PodList) {
 	mapApps := make(map[string]App)
 	listContainers := make([]string, 10)
 	for _, appsList := range appsList.Items {
-		//All containers in a pod a put into a slice
+		//All containers in a pod are put into a slice
 		for i, container := range appsList.Spec.Containers {
 			listContainers[i] = container.Name
 		}
 
-		//After each iteration, we have an App struct with contain the name, Version, and all the containers
-		//attached to the pod
+		//After each iteration, we have an App struct which contain the name, Version, and all the containers
+		// names attached to a pod
 		mapApps[appsList.Spec.Containers[0].Name] = App{
 			name:       appsList.Spec.Containers[0].Name,
 			version:    strings.Split(appsList.Spec.Containers[0].Image, ":")[len(strings.Split(appsList.Spec.Containers[0].Image, ":"))-1],

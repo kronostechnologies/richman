@@ -1,9 +1,9 @@
 package action
 
-/*
+import "fmt"
+
 type AppsRun struct {
-	Filename    string
-	Application string
+	Application []string
 	Config      map[string]string
 }
 
@@ -13,12 +13,27 @@ type KubeContext struct {
 	Application string
 }
 
+type Connection struct {
+	Cluster   string
+	Namespace string
+}
+
+func (clusterConnection Connection) NewConnection() bool {
+	conn := connectCluster()
+	if conn == nil {
+		fmt.Println("Impossible to establish a communication with your cluster")
+		return false
+	}
+	return true
+}
+
 type JobContext struct {
 	Name      string
 	Pod       string
 	Container string
 }
 
+/*
 type JobYaml struct {
 	Metadata struct {
 		Name string
@@ -33,13 +48,17 @@ type JobYaml struct {
 		}
 	}
 }
-
+*/
 func (c *AppsRun) Run() error {
-	data, err := toml.LoadFile(c.Filename)
-	if err != nil {
-		return err
+	conn := Connection{"current", "current"}.NewConnection()
+	if !conn {
+		return nil
 	}
+	fmt.Println("Successfully connected to your cluster")
+	return nil
+}
 
+/*
 	kubeContext := &KubeContext{
 		Context:     data.Get("settings.kubeContext").(string),
 		Namespace:   data.Get("apps." + c.Application + ".namespace").(string),
