@@ -18,9 +18,10 @@ import (
 
 const kubeFolder = "/.kube/config"
 
-type app struct {
-	Name    string
-	Version string
+type App struct {
+	name       string
+	version    string
+	containers []string
 }
 
 type AppFilters struct {
@@ -35,14 +36,21 @@ func Run(filters AppFilters) error {
 
 func printApps(appsList *v1.PodList) {
 	// Iterate over the apps, extracts the name, place them in a map for sorting
-	mapApps := make(map[string]string)
-	var app app
-
+	mapApps := make(map[string]App)
+	listContainers := make([]string, 10)
 	for _, appsList := range appsList.Items {
-		app.Version = strings.Split(appsList.Spec.Containers[0].Image, ":")[len(strings.Split(appsList.Spec.Containers[0].Image, ":"))-1]
-		app.Name = appsList.Spec.Containers[0].Name
+		//All containers in a pod a put into a slice
+		for i, container := range appsList.Spec.Containers {
+			listContainers[i] = container.Name
+		}
 
-		mapApps[app.Name] = app.Version
+		//After each iteration, we have an App struct with contain the name, Version, and all the containers
+		//attached to the pod
+		mapApps[appsList.Spec.Containers[0].Name] = App{
+			name:       appsList.Spec.Containers[0].Name,
+			version:    strings.Split(appsList.Spec.Containers[0].Image, ":")[len(strings.Split(appsList.Spec.Containers[0].Image, ":"))-1],
+			containers: listContainers,
+		}
 
 	}
 
@@ -51,8 +59,8 @@ func printApps(appsList *v1.PodList) {
 	fmt.Printf("%-"+strconv.Itoa(width)+"s  %s\n", "APP", "VERSION")
 
 	for key := range mapApps {
-		//fmt.Println(mapApps[key])
-		fmt.Printf("%-"+strconv.Itoa(width)+"s  %s\n", key, mapApps[key])
+		fmt.Printf("%-"+strconv.Itoa(width)+"s  %s\n", key, mapApps[key].version)
+		fmt.Println("======================================")
 	}
 }
 
