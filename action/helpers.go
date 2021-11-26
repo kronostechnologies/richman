@@ -11,9 +11,9 @@ import (
 )
 
 type TemplateField struct {
-	Name string
+	Name     string
 	Optional bool
-	Default string
+	Default  string
 }
 
 func ListTemplateFields(t *template.Template) []TemplateField {
@@ -50,7 +50,7 @@ func listNodeFields(node parse.Node, res []TemplateField) []TemplateField {
 	return res
 }
 
-func NewField (node string) (TemplateField, error) {
+func NewField(node string) (TemplateField, error) {
 	re := regexp.MustCompile(`^{{(?:default\s+([^\s]+)\s+)?\.([a-zA-Z0-9]+)}}$`)
 
 	submatches := re.FindStringSubmatch(node)
@@ -60,8 +60,8 @@ func NewField (node string) (TemplateField, error) {
 	}
 
 	return TemplateField{
-		Name: submatches[2],
-		Default: strings.Trim(submatches[1], "\""),
+		Name:     submatches[2],
+		Default:  strings.Trim(submatches[1], "\""),
 		Optional: submatches[1] != "",
 	}, nil
 }

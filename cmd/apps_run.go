@@ -13,7 +13,7 @@ var appsRunCmd = &cobra.Command{
 	Short: "run app ops env",
 	Long:  "run app ops env",
 	Args: func(cmd *cobra.Command, args []string) error {
-		if len(args) > 1 {
+		if len(args) != 0 {
 			//TODO : Default to current context, allow to append context
 			return errors.New("too many arguments")
 		}
@@ -21,12 +21,8 @@ var appsRunCmd = &cobra.Command{
 		//return fmt.Errorf("a generic error here: %s", args[0])
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		app_filters, _ := cmd.Flags().GetStringArray("app")
+		app_filters, _ := cmd.Flags().GetString("app")
 		configArgs, _ := cmd.Flags().GetStringArray("config")
-
-		//filters := action.AppFilters{
-		//	Filters: app_filters,
-		//}
 
 		splitRegex := regexp.MustCompile(`^([^=]+)=(.*)$`)
 
@@ -38,7 +34,6 @@ var appsRunCmd = &cobra.Command{
 			value := split[2]
 			configs[key] = value
 		}
-
 		c := action.AppsRun{
 			Application: app_filters,
 			Config:      configs,
