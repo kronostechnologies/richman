@@ -110,18 +110,16 @@ func (c *AppsRun) Run() error {
 
 	jobContext, pe := getJobContext(currentApp, tplConfig)
 	if pe != nil {
-		fmt.Println("USING ALREADY RUNNING POD")
-	} else {
-		jobConfigMap, ae := applyConfig(currentApp, tplConfig)
-		if ae != nil {
-			return ae
-		}
-
-		jobContext, pe = getJobContext(currentApp, jobConfigMap)
-		if pe != nil {
-			if ee, ok := pe.(*exec.ExitError); ok {
-				fmt.Fprintf(os.Stderr, "GetJobContext kubectl error: %s", ee.Stderr)
-			}
+		fmt.Println(pe)
+	}
+	jobConfigMap, ae := applyConfig(currentApp, tplConfig)
+	if ae != nil {
+		return ae
+	}
+	jobContext, pe = getJobContext(currentApp, jobConfigMap)
+	if pe != nil {
+		if ee, ok := pe.(*exec.ExitError); ok {
+			fmt.Fprintf(os.Stderr, "GetJobContext kubectl error: %s", ee.Stderr)
 		}
 	}
 
@@ -202,18 +200,15 @@ func getJobContext(currentApp App, jobYaml []byte) (*JobContext, error) {
 	}
 	fmt.Println("kubectl get pods --context -o jsonpath='{ items[0].metadata.name }' " + currentApp.KubeContext.Cluster + " --namespace=" + currentApp.KubeContext.Namespace)
 
-	/*if count := len(currentApp.containers); count != 1 {
+	if count := len(jobYamlStruct.Spec.Template.Spec.Containers); count != 1 {
 		return nil, fmt.Errorf("container count %d unsupported", count)
-	}*/
-
-	//jobName := currentApp.application
-	//containerName := currentApp.containers[0].Name
+	}
 
 	jobName := jobYamlStruct.Metadata.Name
 	containerName := jobYamlStruct.Spec.Template.Spec.Containers[0].Name
 
-	//cmd := exec.Command("kubectl", "--context", currentApp.KubeContext.Cluster, "--namespace", currentApp.KubeContext.Namespace, "get", "pod", "--selector=job-name="+jobName, "-o", "jsonpath={ .items[0].metadata.name }")
-	cmd := exec.Command("kubectl", "--context", currentApp.KubeContext.Cluster, "--namespace", currentApp.KubeContext.Namespace, "get", "pod", "-o", "jsonpath={ .items[0].metadata.name }")
+	cmd := exec.Command("kubectl", "--context", currentApp.KubeContext.Cluster, "--namespace", currentApp.KubeContext.Namespace, "get", "pod", "--selector=job-name="+jobName, "-o", "jsonpath={ .items[0].metadata.name }")
+	//cmd := exec.Command("kubectl", "--context", currentApp.KubeContext.Cluster, "--namespace", currentApp.KubeContext.Namespace, "get", "pod", "-o", "jsonpath={ .items[0].metadata.name }")
 	out, ce := cmd.Output()
 	podName := strings.TrimSpace(string(out))
 	if ce != nil {
