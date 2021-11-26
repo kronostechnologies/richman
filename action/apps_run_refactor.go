@@ -109,7 +109,7 @@ func (c *AppsRun) Run() error {
 	}
 
 	jobContext, pe := getJobContext(currentApp, tplConfig)
-	if pe == nil {
+	if pe != nil {
 		fmt.Println("USING ALREADY RUNNING POD")
 	} else {
 		jobConfigMap, ae := applyConfig(currentApp, tplConfig)
@@ -206,8 +206,11 @@ func getJobContext(currentApp App, jobYaml []byte) (*JobContext, error) {
 		return nil, fmt.Errorf("container count %d unsupported", count)
 	}*/
 
-	jobName := currentApp.application
-	containerName := currentApp.containers[0].Name
+	//jobName := currentApp.application
+	//containerName := currentApp.containers[0].Name
+
+	jobName := jobYamlStruct.Metadata.Name
+	containerName := jobYamlStruct.Spec.Template.Spec.Containers[0].Name
 
 	//cmd := exec.Command("kubectl", "--context", currentApp.KubeContext.Cluster, "--namespace", currentApp.KubeContext.Namespace, "get", "pod", "--selector=job-name="+jobName, "-o", "jsonpath={ .items[0].metadata.name }")
 	cmd := exec.Command("kubectl", "--context", currentApp.KubeContext.Cluster, "--namespace", currentApp.KubeContext.Namespace, "get", "pod", "-o", "jsonpath={ .items[0].metadata.name }")
