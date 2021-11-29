@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/sprig"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/go-yaml/yaml"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -50,11 +49,11 @@ type JobYaml struct {
 func (clusterConnection Connection) NewConnection() bool {
 	conn := ConnectCluster()
 	if conn == nil {
-		fmt.Println("Impossible to establish a communication with your cluster")
+		fmt.Println("Impossible to establish a communication with your cluster at this time")
 		return false
 	}
 	clientCfg, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
-	spew.Dump(clientCfg, err)
+	fmt.Printf("%-v %s", clientCfg, err)
 	fmt.Println("------------")
 	return true
 }
