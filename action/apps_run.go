@@ -333,15 +333,14 @@ func SanitizeConfigMap(configMap []byte) string {
 
 //Get map of Apps, compares it with the app filter given by the -a flag for existence, and fetch the configmap if exists
 func getConfigMap(application string, mapApps map[string]App) ([]byte, error) {
-	cmdContext, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	cmdContext, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
-	defer cancel()
+	//defer cancel()
 	if _, ok := mapApps[application]; ok {
 		application := mapApps[application].application
 		namespace := mapApps[application].KubeContext.Namespace
 		cluster := mapApps[application].KubeContext.Cluster
 		configmap, err := exec.CommandContext(cmdContext, "kubectl", "--context", cluster, "--namespace", namespace, "get", "configmap", "-l", "richman/role=job-template,app.kubernetes.io/name="+application, "-o", "jsonpath={ .items[0].data.template }").Output()
-		//fmt.Println("kubectl get configmap --context " + cluster + " -l richman/role=job-template,app.kubernetes.io/name=" + application + " --namespace=" + namespace)
 		if err != nil {
 			if ce := cmdContext.Err(); ce != nil {
 				fmt.Fprintf(os.Stderr, "%s", ce)
@@ -354,6 +353,5 @@ func getConfigMap(application string, mapApps map[string]App) ([]byte, error) {
 		}
 		return configmap, err
 	}
-	//It is bad to return unreacheable code.
 	return nil, nil
 }

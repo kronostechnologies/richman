@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
@@ -71,7 +70,6 @@ func sortApps(appsList *v1.PodList, context string) map[string]App {
 		appName := GetLabels(app.ObjectMeta)["app.kubernetes.io/name"]
 		if cont, ok := mapApps[appName]; ok {
 			if len(app.ObjectMeta.Labels["app.kubernetes.io/name"]) > 0 && app.ObjectMeta.Labels["app.kubernetes.io/component"] != mapApps[appName].labels["app.kubernetes.io/component"] {
-				//cont.containers = append(mapApps[appName].containers, cont.containers...)
 				mapApps[GetLabels(app.ObjectMeta)["app.kubernetes.io/name"]] = cont
 			}
 		} else {
@@ -105,11 +103,11 @@ func GetLabels(metadata metav1.ObjectMeta) map[string]string {
 //Print Labels for each pods
 func PrintLabels(mapApps map[string]App) {
 	//Formatting
-	width := 5
-	fmt.Printf("%-"+strconv.Itoa(width)+"s  %s\n", "Label", "Value")
+	width := "5"
+	fmt.Printf("%-"+width+"s  %s\n", "Label", "Value")
 
 	for key := range mapApps {
-		fmt.Printf("%-"+strconv.Itoa(width)+"s  %s\n", key, mapApps[key].version)
+		fmt.Printf("%-"+width+"s  %s\n", key, mapApps[key].version)
 		fmt.Println("---------------------")
 		for k := range mapApps[key].labels {
 			fmt.Println("name : " + k + " Label: " + mapApps[key].labels[k])
@@ -120,13 +118,13 @@ func PrintLabels(mapApps map[string]App) {
 func PrintApps(mapApps map[string]App) {
 
 	//Formatting
-	width := 5
+	width := "5"
 
-	fmt.Printf("%-"+strconv.Itoa(width)+"s  %s\n", "APP", "VERSION")
+	fmt.Printf("%-"+width+"s  %s\n", "APP", "VERSION")
 	fmt.Println("======================================")
 	for key := range mapApps {
-		fmt.Printf("%-"+strconv.Itoa(width)+"s  %s\n", key, mapApps[key].version)
-		fmt.Printf("%-"+strconv.Itoa(width)+"s  \n", "with the following containers : ")
+		fmt.Printf("%-"+width+"s  %s\n", key, mapApps[key].version)
+		fmt.Printf("%-"+width+"s  \n", "with the following containers : ")
 		for _, container := range mapApps[key].containers {
 			fmt.Println("-  " + container.Name + " " + strings.Split(container.Image, ":")[len(strings.Split(container.Image, ":"))-1])
 		}

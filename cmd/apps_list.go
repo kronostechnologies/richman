@@ -17,7 +17,6 @@ var appsListCmd = &cobra.Command{
 			return errors.New("too many arguments")
 		}
 		return nil
-		//return fmt.Errorf("a generic error here: %s", args[0])
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		app_filters, _ := cmd.Flags().GetStringArray("app")
