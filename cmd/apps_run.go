@@ -9,7 +9,7 @@ import (
 )
 
 var appsRunCmd = &cobra.Command{
-	Use:   "run FILENAME",
+	Use:   "run -a APPLICATION",
 	Short: "run app ops env",
 	Long:  "run app ops env",
 	Args: func(cmd *cobra.Command, args []string) error {
@@ -21,6 +21,9 @@ var appsRunCmd = &cobra.Command{
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		app_filters, _ := cmd.Flags().GetString("app")
+		if app_filters == "" {
+			return errors.New("please provide an application to run with the -a flag")
+		}
 		configArgs, _ := cmd.Flags().GetStringArray("config")
 
 		splitRegex := regexp.MustCompile(`^([^=]+)=(.*)$`)

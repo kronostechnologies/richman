@@ -122,12 +122,10 @@ func PrintApps(mapApps map[string]App) {
 	fmt.Printf("%-"+width+"s  %s\n", "APP", "VERSION")
 	fmt.Println("======================================")
 	for key := range mapApps {
-		fmt.Printf("%-"+width+"s  %s\n", key, mapApps[key].version)
-		fmt.Printf("%-"+width+"s  \n", "with the following containers : ")
 		for _, container := range mapApps[key].containers {
-			fmt.Printf("  - %-"+width+"s %s \n", container.Name, strings.Split(container.Image, ":")[len(strings.Split(container.Image, ":"))-1])
+			fmt.Printf("%s : %s %s \n", key, container.Name, strings.Split(container.Image, ":")[len(strings.Split(container.Image, ":"))-1])
 		}
-		fmt.Println("======================================")
+		fmt.Printf("-------------- \n")
 	}
 }
 
