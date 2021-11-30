@@ -119,8 +119,8 @@ func PrintApps(mapApps map[string]App) {
 	//Formatting
 	width := "5"
 
-	fmt.Printf("%-"+width+"s  %s\n", "APP", "VERSION")
-	fmt.Println("======================================")
+	fmt.Printf("\n%-"+width+"s  %s\n", "APP : ", "CONTAINER  VERSION")
+	fmt.Printf("======================================\n \n")
 	for key := range mapApps {
 		for _, container := range mapApps[key].containers {
 			fmt.Printf("%s : %s %s \n", key, container.Name, strings.Split(container.Image, ":")[len(strings.Split(container.Image, ":"))-1])
