@@ -2,29 +2,28 @@ package cmd
 
 import (
 	"errors"
-	"fmt"
+	"regexp"
+
 	"github.com/kronostechnologies/richman/action"
 	"github.com/spf13/cobra"
-	"os"
-	"regexp"
 )
 
 var appsRunCmd = &cobra.Command{
-	Use:   "run FILENAME",
+	Use:   "run -a APPLICATION",
 	Short: "run app ops env",
 	Long:  "run app ops env",
 	Args: func(cmd *cobra.Command, args []string) error {
-		if len(args) != 1 {
-			return errors.New("filename required")
+		if len(args) != 0 {
+			//TODO : Default to current context, allow to append context
+			return errors.New("too many arguments")
 		}
-		if _, err := os.Stat(args[0]); !os.IsNotExist(err) {
-			return nil
-		}
-
-		return fmt.Errorf("invalid filename specified: %s", args[0])
+		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		appFilter, _ := cmd.Flags().GetString("app")
+		app_filters, _ := cmd.Flags().GetString("app")
+		if app_filters == "" {
+			return errors.New("please provide an application to run with the -a flag")
+		}
 		configArgs, _ := cmd.Flags().GetStringArray("config")
 
 		splitRegex := regexp.MustCompile(`^([^=]+)=(.*)$`)
@@ -37,19 +36,16 @@ var appsRunCmd = &cobra.Command{
 			value := split[2]
 			configs[key] = value
 		}
-
 		c := action.AppsRun{
-			Filename:    args[0],
-			Application: appFilter,
+			Application: app_filters,
 			Config:      configs,
 		}
 
 		return c.Run()
 	},
-
 }
 
-func init(){
-	appsRunCmd.Flags().StringP( "app",  "a", "", "select app by name")
-	appsRunCmd.Flags().StringArrayP( "config",  "c", []string{}, "set config key=value")
+func init() {
+	appsRunCmd.Flags().StringP("app", "a", "", "select app by name")
+	appsRunCmd.Flags().StringArrayP("config", "c", []string{}, "set config key=value")
 }
