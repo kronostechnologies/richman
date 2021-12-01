@@ -1,6 +1,6 @@
 # Richman
 
-A tool to manage [helmsman](https://github.com/Praqma/helmsman) specification toml files.
+A tool to manage [helmsman](https://github.com/Praqma/helmsman), list applications in a cluster, and allow you to run a templated application in your own node.
 
 # Install
 ```
@@ -11,34 +11,27 @@ go install
 
 # Usage
 
-## Update charts in a helmsman toml file
-```
-# Dry-run
-richman chart update cluster.toml
-# Update repositories
-richman chart update cluster.toml -c stable --apply
-# Update charts
-richman chart update cluster.toml -c stable/prometheus-operator --apply
-# Update charts by app name
-richman chart update cluster.toml -a prometheus-operator -a nginx-ingress --apply
-```
 
 ## List app version overrides in a helmsman toml file
-Reads all image.tag overrides in "setString" sections
+Reads all pods in your current cluster, and sort them by apps / containers
 ```
 # Show all apps
-richman apps list cluster.toml
-# List a few apps
-richman apps list cluster.toml -a myapp -a otherapp
-APP       VERSION
-myapp     1.2.2
-otherapp  1.1.15
+richman apps list
+
+
+PP :   CONTAINER  VERSION                                                                                                                                                                                                                                                      
+======================================                                                                                                                                                                                                                                                                                
+logdna-reporter : logdna-reporter beta2-prerelease                                                                                                                                                                                                                              
+--------------                                                                                                                                                                                                                                                                  
+login-frontend : login-frontend version-2.3.1                                                                                                                                                                                                                                   
+--------------                                                                                                                                                                                                                                                                  
+pdf-api : pdf-api version-0.0.4    
 ```
 
 ## Run a one-time job for an app
 Applies and attaches to a "Job" template stored in a ConfigMap
 ```
-richman apps run cluster.toml -a myapp -c name="myjob" -c cpu="1" -c memory="1G" -c templateparam="value"
+richman apps run -a equisoft-connect -c name="myjob" -c cpu="1" -c memory="1G" -c templateparam="value"
 ```
 Template parameter values are found in the ops configmap. They are strings like {{ .cpu }} or {{ .memory }} in the ops configmap itself.
 
