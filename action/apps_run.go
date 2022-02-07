@@ -257,7 +257,7 @@ func attachContainer(currentApp App, jobCtx *JobContext) error {
 
 func waitPod(currentApp App, jobContext *JobContext) error {
 	tries := 1
-	maxTries := 75
+	maxTries := 120
 
 	for tries <= maxTries {
 		out, ce := getPodState(currentApp, jobContext)
@@ -273,11 +273,13 @@ func waitPod(currentApp App, jobContext *JobContext) error {
 			break
 		}
 
-		fmt.Fprintf(os.Stderr, "pod not ready: %s (%d/%d)\n", out, tries, maxTries)
+		fmt.Fprintf(os.Stderr, "\033[2K\rpod not ready: %s (%d/%d)", out, tries, maxTries)
 
-		time.Sleep(3 * time.Second)
+		time.Sleep(5 * time.Second)
 		tries += 1
 	}
+	
+	fmt.Println()
 
 	return nil
 }
