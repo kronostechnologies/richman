@@ -66,7 +66,12 @@ func (c *AppsRun) Run() error {
 		ClientSet:      GetClientSet(GetKubeConfigPath()),
 	}
 	currentContext := clientSet.Cluster
-	listApps, _ := ListApps(clientSet.ClientSet)
+	listApps, err := ListApps(clientSet.ClientSet)
+
+	if err != nil {
+		return err
+	}
+
 	mapApps := sortApps(listApps, currentContext)
 
 	configMap, err := getConfigMap(c.Application, mapApps)
@@ -278,7 +283,7 @@ func waitPod(currentApp App, jobContext *JobContext) error {
 		time.Sleep(5 * time.Second)
 		tries += 1
 	}
-	
+
 	fmt.Println()
 
 	return nil
