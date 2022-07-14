@@ -51,7 +51,12 @@ func Run(filters AppFilters) error {
 		ClientSet:      GetClientSet(GetKubeConfigPath()),
 	}
 	currentContext := clientSet.Cluster
-	listApps, _ := ListApps(clientSet.ClientSet)
+	listApps, err := ListApps(clientSet.ClientSet)
+
+	if err != nil {
+		return err
+	}
+
 	mapApps := sortApps(listApps, currentContext)
 
 	//Actual listing
