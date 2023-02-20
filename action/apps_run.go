@@ -112,6 +112,12 @@ func (c *AppsRun) Run() error {
 		return te
 	}
 
+	jobName, je := getJobName(tplConfig)
+	if(je != nil){
+		return je
+	}
+	deleteJobIfComplete(currentApp, jobName)
+	
 	jobContext, pe := getJobContext(currentApp, tplConfig)
 	jobConfigMap, ae := applyConfig(currentApp, tplConfig)
 	if ae != nil {
@@ -128,7 +134,7 @@ func (c *AppsRun) Run() error {
 	signal.Notify(channel, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-channel
-		deleteJob(currentApp, jobContext)
+		deleteJob(currentApp, jobName)
 		os.Exit(1)
 	}()
 
@@ -172,7 +178,7 @@ func (c *AppsRun) Run() error {
 	}
 
 	if deleteOnExit {
-		return deleteJob(currentApp, jobContext)
+		return deleteJob(currentApp, jobName)
 	}
 	return nil
 }
@@ -190,6 +196,18 @@ func applyConfig(currentApp App, configMap []byte) ([]byte, error) {
 	}
 
 	return out, err
+}
+
+func getJobName(jobYaml []byte) (string, error)  {
+	jobYamlStruct := &JobYaml{}
+	ye := yaml.Unmarshal(jobYaml, &jobYamlStruct)
+	if ye != nil {
+		return "", ye
+	}
+	if count := len(jobYamlStruct.Spec.Template.Spec.Containers); count != 1 {
+		return "", fmt.Errorf("container count %d unsupported", count)
+	}
+	return jobYamlStruct.Metadata.Name, nil
 }
 
 func getJobContext(currentApp App, jobYaml []byte) (*JobContext, error) {
@@ -234,8 +252,8 @@ func getPodState(currentApp App, jobCtx *JobContext) (string, error) {
 	return string(out), ce
 }
 
-func deleteJob(currentApp App, jobCtx *JobContext) error {
-	cmd := exec.Command("kubectl", "--context", currentApp.KubeContext.Cluster, "--namespace", currentApp.KubeContext.Namespace, "delete", "job", jobCtx.Name)
+func deleteJob(currentApp App, jobName string) error {
+	cmd := exec.Command("kubectl", "--context", currentApp.KubeContext.Cluster, "--namespace", currentApp.KubeContext.Namespace, "delete", "job", jobName)
 	out, ce := cmd.Output()
 	fmt.Println(string(out))
 
@@ -246,6 +264,21 @@ func deleteJob(currentApp App, jobCtx *JobContext) error {
 		return ce
 	}
 
+	return nil
+}
+
+func deleteJobIfComplete(currentApp App, jobName string) error {
+	cmd := exec.Command("kubectl", "--context", currentApp.KubeContext.Cluster, "--namespace", currentApp.KubeContext.Namespace, "get", "job", jobName, "-o", "jsonpath='{ .status.succeeded }'")
+	out, ce := cmd.Output()
+	if ce != nil {
+		return ce
+	}
+
+	// The command above return the number of succeeded if job is complete otherwise it return the string ''
+	if string(out) != "''"{
+		fmt.Fprintf(os.Stderr, "The job %s is complete. We delete it and create new one\n", jobName)
+		return deleteJob(currentApp, jobName)
+	}
 	return nil
 }
 
