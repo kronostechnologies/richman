@@ -66,7 +66,7 @@ func (c *AppsRun) Run() error {
 		ClientSet:      GetClientSet(GetKubeConfigPath()),
 	}
 	currentContext := clientSet.Cluster
-	listApps, err := ListApps(clientSet.ClientSet)
+	listApps, err := ListApps(clientSet.ClientSet, c.Application)
 
 	if err != nil {
 		return err
