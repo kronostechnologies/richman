@@ -51,7 +51,11 @@ func Run(filters AppFilters) error {
 		ClientSet:      GetClientSet(GetKubeConfigPath()),
 	}
 	currentContext := clientSet.Cluster
-	listApps, err := ListApps(clientSet.ClientSet)
+	var namespace string = ""
+	if len(filters.Filters) > 0 {
+		namespace = filters.Filters[0]
+	}
+	listApps, err := ListApps(clientSet.ClientSet, namespace)
 
 	if err != nil {
 		return err
@@ -146,8 +150,8 @@ func ConnectCluster() *kubernetes.Clientset {
 }
 
 //Return a pointer to a list of Pods
-func ListApps(clientSet kubernetes.Interface) (*v1.PodList, error) {
-	pods, err := clientSet.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
+func ListApps(clientSet kubernetes.Interface, namespace string) (*v1.PodList, error) {
+	pods, err := clientSet.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
