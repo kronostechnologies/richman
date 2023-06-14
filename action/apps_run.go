@@ -121,7 +121,27 @@ func (c *AppsRun) Run() error {
 	jobContext, pe := getJobContext(currentApp, tplConfig)
 	jobConfigMap, ae := applyConfig(currentApp, tplConfig)
 	if ae != nil {
-		return ae
+		// Ask to user if he wants to delete the job
+		c := promptChoice("kubectl has failed to replace the existing job. Do you want to delete it (y/n)?")
+		if len(c) == 0 {
+			c = "n"
+		}
+		if []rune(strings.ToLower(c))[0] == 'y' {
+			de := deleteJob(currentApp, jobName)
+			if de != nil {
+				if ee, ok := de.(*exec.ExitError); ok {
+					fmt.Fprintf(os.Stderr, "deleteJob kubectl error: %s", ee.Stderr)
+				}
+				return de
+			}
+		} else {
+			return ae
+		}
+
+		jobConfigMap, ae = applyConfig(currentApp, tplConfig)
+		if ae != nil {
+			return ae
+		}
 	}
 	jobContext, pe = getJobContext(currentApp, jobConfigMap)
 	if pe != nil {
