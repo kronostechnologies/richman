@@ -113,15 +113,35 @@ func (c *AppsRun) Run() error {
 	}
 
 	jobName, je := getJobName(tplConfig)
-	if(je != nil){
+	if je != nil {
 		return je
 	}
 	deleteJobIfComplete(currentApp, jobName)
-	
+
 	jobContext, pe := getJobContext(currentApp, tplConfig)
 	jobConfigMap, ae := applyConfig(currentApp, tplConfig)
 	if ae != nil {
-		return ae
+		// Ask to user if he wants to delete the job
+		c := promptChoice("kubectl has failed to replace the existing job. Do you want to delete it (y/[n])?")
+		if len(c) == 0 {
+			c = "n"
+		}
+		if []rune(strings.ToLower(c))[0] == 'y' {
+			de := deleteJob(currentApp, jobName)
+			if de != nil {
+				if ee, ok := de.(*exec.ExitError); ok {
+					fmt.Fprintf(os.Stderr, "deleteJob kubectl error: %s", ee.Stderr)
+				}
+				return de
+			}
+		} else {
+			return ae
+		}
+
+		jobConfigMap, ae = applyConfig(currentApp, tplConfig)
+		if ae != nil {
+			return ae
+		}
 	}
 	jobContext, pe = getJobContext(currentApp, jobConfigMap)
 	if pe != nil {
@@ -183,7 +203,7 @@ func (c *AppsRun) Run() error {
 	return nil
 }
 
-//Read the extracted configMap and apply it to the current cluster and namespace of the chosen app
+// Read the extracted configMap and apply it to the current cluster and namespace of the chosen app
 func applyConfig(currentApp App, configMap []byte) ([]byte, error) {
 	cmd := exec.Command("kubectl", "--context", currentApp.KubeContext.Cluster, "--namespace", currentApp.KubeContext.Namespace, "apply", "-f", "-", "-o", "yaml")
 	cmd.Stdin = bytes.NewReader(configMap)
@@ -198,7 +218,7 @@ func applyConfig(currentApp App, configMap []byte) ([]byte, error) {
 	return out, err
 }
 
-func getJobName(jobYaml []byte) (string, error)  {
+func getJobName(jobYaml []byte) (string, error) {
 	jobYamlStruct := &JobYaml{}
 	ye := yaml.Unmarshal(jobYaml, &jobYamlStruct)
 	if ye != nil {
@@ -275,7 +295,7 @@ func deleteJobIfComplete(currentApp App, jobName string) error {
 	}
 
 	// The command above return the number of succeeded if job is complete otherwise it return the string ''
-	if string(out) != "''"{
+	if string(out) != "''" {
 		fmt.Fprintf(os.Stderr, "The job %s is complete. We delete it and create new one\n", jobName)
 		return deleteJob(currentApp, jobName)
 	}
@@ -370,7 +390,7 @@ func SanitizeConfigMap(configMap []byte) string {
 	return configMapStr
 }
 
-//Get map of Apps, compares it with the app filter given by the -a flag for existence, and fetch the configmap if exists
+// Get map of Apps, compares it with the app filter given by the -a flag for existence, and fetch the configmap if exists
 func getConfigMap(application string, mapApps map[string]App) ([]byte, error) {
 	cmdContext, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
