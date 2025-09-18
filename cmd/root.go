@@ -12,7 +12,6 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(appsCmd)
-	rootCmd.AddCommand(chartCmd)
 }
 
 func SetVersion(version string) {

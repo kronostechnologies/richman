@@ -42,32 +42,6 @@ type Connection struct {
 	Cluster        string
 }
 
-func Run(filters AppFilters) error {
-
-	//Create a new connection
-	clientSet := &Connection{
-		KubeConfigPath: GetKubeConfigPath(),
-		Cluster:        GetClusterName(),
-		ClientSet:      GetClientSet(GetKubeConfigPath()),
-	}
-	currentContext := clientSet.Cluster
-	var namespace string = ""
-	if len(filters.Filters) > 0 {
-		namespace = filters.Filters[0]
-	}
-	listApps, err := ListApps(clientSet.ClientSet, namespace)
-
-	if err != nil {
-		return err
-	}
-
-	mapApps := sortApps(listApps, currentContext)
-
-	//Actual listing
-	PrintApps(mapApps)
-	return nil
-}
-
 func sortApps(appsList *v1.PodList, context string) map[string]App {
 	// Iterate over the apps, extracts the name, place them in a map for sorting
 	mapApps := make(map[string]App)
