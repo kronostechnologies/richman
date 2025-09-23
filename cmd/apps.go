@@ -11,7 +11,7 @@ var appsCmd = &cobra.Command{
 }
 
 func init() {
-	appsCmd.AddCommand(appsListCmd)
 	appsCmd.AddCommand(appsRunCmd)
+	appsCmd.AddCommand(appsExecCmd)
 }
 
