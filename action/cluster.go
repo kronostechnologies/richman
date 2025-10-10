@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	
+
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -17,10 +17,6 @@ type KubeContext struct {
 	Namespace   string
 	Cluster     string
 	Application string
-}
-
-type AppFilters struct {
-	Filters []string
 }
 
 type Connection struct {
