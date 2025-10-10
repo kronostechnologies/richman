@@ -66,15 +66,7 @@ func (c *AppsRun) Run() error {
 		ClientSet:      GetClientSet(GetKubeConfigPath()),
 	}
 	currentContext := clientSet.Cluster
-	listApps, err := ListApps(clientSet.ClientSet, c.Application)
-
-	if err != nil {
-		return err
-	}
-
-	mapApps := sortApps(listApps, currentContext)
-
-	configMap, err := getConfigMap(c.Application, mapApps)
+	configMap, err := getConfigMap(c.Application, currentContext)
 	if err != nil {
 		fmt.Println("Config map not existing for this application")
 		return err
@@ -86,8 +78,7 @@ func (c *AppsRun) Run() error {
 	jobTemplate := template.Must(template.New("configmap").Funcs(sprig.TxtFuncMap()).Parse(configMapStr))
 	templateFields := ListTemplateFields(jobTemplate)
 
-	currentApp := mapApps[c.Application]
-	user, err := GetUser(currentApp.KubeContext.Cluster)
+	user, err := GetUser(currentContext)
 	if err != nil {
 		return err
 	}
@@ -102,6 +93,7 @@ func (c *AppsRun) Run() error {
 		return ve
 	}
 
+	fmt.Println("ready to execute job")
 	buf := new(bytes.Buffer)
 	if te := jobTemplate.Execute(buf, c.Config); te != nil {
 		return te
@@ -116,18 +108,18 @@ func (c *AppsRun) Run() error {
 	if je != nil {
 		return je
 	}
-	deleteJobIfComplete(currentApp, jobName)
+	deleteJobIfComplete(currentContext, c.Application, jobName)
 
-	jobContext, pe := getJobContext(currentApp, tplConfig)
-	jobConfigMap, ae := applyConfig(currentApp, tplConfig)
+	jobContext, pe := getJobContext(currentContext, c.Application, tplConfig)
+	jobConfigMap, ae := applyConfig(currentContext, c.Application, tplConfig)
 	if ae != nil {
 		// Ask to user if he wants to delete the job
-		c := promptChoice("kubectl has failed to replace the existing job. Do you want to delete it (y/[n])?")
-		if len(c) == 0 {
-			c = "n"
+		cs := promptChoice("kubectl has failed to replace the existing job. Do you want to delete it (y/[n])?")
+		if len(cs) == 0 {
+			cs = "n"
 		}
-		if []rune(strings.ToLower(c))[0] == 'y' {
-			de := deleteJob(currentApp, jobName)
+		if []rune(strings.ToLower(cs))[0] == 'y' {
+			de := deleteJob(currentContext, c.Application, jobName)
 			if de != nil {
 				if ee, ok := de.(*exec.ExitError); ok {
 					fmt.Fprintf(os.Stderr, "deleteJob kubectl error: %s", ee.Stderr)
@@ -138,12 +130,12 @@ func (c *AppsRun) Run() error {
 			return ae
 		}
 
-		jobConfigMap, ae = applyConfig(currentApp, tplConfig)
+		jobConfigMap, ae = applyConfig(currentContext, c.Application, tplConfig)
 		if ae != nil {
 			return ae
 		}
 	}
-	jobContext, pe = getJobContext(currentApp, jobConfigMap)
+	jobContext, pe = getJobContext(currentContext, c.Application, jobConfigMap)
 	if pe != nil {
 		if ee, ok := pe.(*exec.ExitError); ok {
 			fmt.Fprintf(os.Stderr, "GetJobContext kubectl error: %s", ee.Stderr)
@@ -154,22 +146,21 @@ func (c *AppsRun) Run() error {
 	signal.Notify(channel, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-channel
-		deleteJob(currentApp, jobName)
+		deleteJob(currentContext, c.Application, jobName)
 		os.Exit(1)
 	}()
 
-	wpe := waitPod(currentApp, jobContext)
-
+	wpe := waitPod(currentContext, c.Application, jobContext)
 	deleteOnExit := false
 
 	if wpe == nil {
 		attach := true
 		for attach {
-			ace := attachContainer(currentApp, jobContext)
+			ace := attachContainer(currentContext, c.Application, jobContext)
 
 			time.Sleep(1 * time.Second)
 
-			state, _ := getPodState(currentApp, jobContext)
+			state, _ := getPodState(currentContext, c.Application, jobContext)
 			if strings.Contains(state, "Succeeded") || strings.Contains(state, "Failed") {
 				deleteOnExit = true
 				break
@@ -198,14 +189,14 @@ func (c *AppsRun) Run() error {
 	}
 
 	if deleteOnExit {
-		return deleteJob(currentApp, jobName)
+		return deleteJob(currentContext, c.Application, jobName)
 	}
 	return nil
 }
 
 // Read the extracted configMap and apply it to the current cluster and namespace of the chosen app
-func applyConfig(currentApp App, configMap []byte) ([]byte, error) {
-	cmd := exec.Command("kubectl", "--context", currentApp.KubeContext.Cluster, "--namespace", currentApp.KubeContext.Namespace, "apply", "-f", "-", "-o", "yaml")
+func applyConfig(cluster string, application string, configMap []byte) ([]byte, error) {
+	cmd := exec.Command("kubectl", "--context", cluster, "--namespace", application, "apply", "-f", "-", "-o", "yaml")
 	cmd.Stdin = bytes.NewReader(configMap)
 	out, err := cmd.Output()
 
@@ -230,7 +221,7 @@ func getJobName(jobYaml []byte) (string, error) {
 	return jobYamlStruct.Metadata.Name, nil
 }
 
-func getJobContext(currentApp App, jobYaml []byte) (*JobContext, error) {
+func getJobContext(cluster string, application string, jobYaml []byte) (*JobContext, error) {
 
 	jobYamlStruct := &JobYaml{}
 	ye := yaml.Unmarshal(jobYaml, &jobYamlStruct)
@@ -244,7 +235,7 @@ func getJobContext(currentApp App, jobYaml []byte) (*JobContext, error) {
 	jobName := jobYamlStruct.Metadata.Name
 	containerName := jobYamlStruct.Spec.Template.Spec.Containers[0].Name
 
-	cmd := exec.Command("kubectl", "--context", currentApp.KubeContext.Cluster, "--namespace", currentApp.KubeContext.Namespace, "get", "pod", "--selector=job-name="+jobName, "-o", "jsonpath={ .items[0].metadata.name }")
+	cmd := exec.Command("kubectl", "--context", cluster, "--namespace", application, "get", "pod", "--selector=job-name="+jobName, "-o", "jsonpath={ .items[0].metadata.name }")
 	out, ce := cmd.Output()
 	podName := strings.TrimSpace(string(out))
 	if ce != nil {
@@ -266,14 +257,14 @@ func promptChoice(message string) string {
 	return strings.TrimSpace(scanner.Text())
 }
 
-func getPodState(currentApp App, jobCtx *JobContext) (string, error) {
-	cmd := exec.Command("kubectl", "--context", currentApp.KubeContext.Cluster, "--namespace", currentApp.KubeContext.Namespace, "get", "pod", jobCtx.Pod, "-o", "jsonpath='{ .status.phase }'")
+func getPodState(cluster string, application string, jobCtx *JobContext) (string, error) {
+	cmd := exec.Command("kubectl", "--context", cluster, "--namespace", application, "get", "pod", jobCtx.Pod, "-o", "jsonpath='{ .status.phase }'")
 	out, ce := cmd.Output()
 	return string(out), ce
 }
 
-func deleteJob(currentApp App, jobName string) error {
-	cmd := exec.Command("kubectl", "--context", currentApp.KubeContext.Cluster, "--namespace", currentApp.KubeContext.Namespace, "delete", "job", jobName)
+func deleteJob(cluster string, application string, jobName string) error {
+	cmd := exec.Command("kubectl", "--context", cluster, "--namespace", application, "delete", "job", jobName)
 	out, ce := cmd.Output()
 	fmt.Println(string(out))
 
@@ -287,8 +278,8 @@ func deleteJob(currentApp App, jobName string) error {
 	return nil
 }
 
-func deleteJobIfComplete(currentApp App, jobName string) error {
-	cmd := exec.Command("kubectl", "--context", currentApp.KubeContext.Cluster, "--namespace", currentApp.KubeContext.Namespace, "get", "job", jobName, "-o", "jsonpath='{ .status.succeeded }'")
+func deleteJobIfComplete(cluster string, application string, jobName string) error {
+	cmd := exec.Command("kubectl", "--context", cluster, "--namespace", application, "get", "job", jobName, "-o", "jsonpath='{ .status.succeeded }'")
 	out, ce := cmd.Output()
 	if ce != nil {
 		return ce
@@ -297,13 +288,13 @@ func deleteJobIfComplete(currentApp App, jobName string) error {
 	// The command above return the number of succeeded if job is complete otherwise it return the string ''
 	if string(out) != "''" {
 		fmt.Fprintf(os.Stderr, "The job %s is complete. We delete it and create new one\n", jobName)
-		return deleteJob(currentApp, jobName)
+		return deleteJob(cluster, application, jobName)
 	}
 	return nil
 }
 
-func attachContainer(currentApp App, jobCtx *JobContext) error {
-	cmd := exec.Command("kubectl", "--context", currentApp.KubeContext.Cluster, "--namespace", currentApp.KubeContext.Namespace, "attach", "-it", jobCtx.Pod, "-c", jobCtx.Container)
+func attachContainer(cluster string, application string, jobCtx *JobContext) error {
+	cmd := exec.Command("kubectl", "--context", cluster, "--namespace", application, "attach", "-it", jobCtx.Pod, "-c", jobCtx.Container)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -313,12 +304,12 @@ func attachContainer(currentApp App, jobCtx *JobContext) error {
 	return cmd.Run()
 }
 
-func waitPod(currentApp App, jobContext *JobContext) error {
+func waitPod(cluster string, application string, jobContext *JobContext) error {
 	tries := 1
 	maxTries := 180
 
 	for tries <= maxTries {
-		out, ce := getPodState(currentApp, jobContext)
+		out, ce := getPodState(cluster, application, jobContext)
 
 		if ce != nil {
 			if ee, ok := ce.(*exec.ExitError); ok {
@@ -391,26 +382,20 @@ func SanitizeConfigMap(configMap []byte) string {
 }
 
 // Get map of Apps, compares it with the app filter given by the -a flag for existence, and fetch the configmap if exists
-func getConfigMap(application string, mapApps map[string]App) ([]byte, error) {
+func getConfigMap(application string, cluster string) ([]byte, error) {
 	cmdContext, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
 	//defer cancel()
-	if _, ok := mapApps[application]; ok {
-		application := mapApps[application].application
-		namespace := mapApps[application].KubeContext.Namespace
-		cluster := mapApps[application].KubeContext.Cluster
-		configmap, err := exec.CommandContext(cmdContext, "kubectl", "--context", cluster, "--namespace", namespace, "get", "configmap", "-l", "richman/role=job-template,app.kubernetes.io/name="+application, "-o", "jsonpath={ .items[0].data.template }").Output()
-		if err != nil {
-			if ce := cmdContext.Err(); ce != nil {
-				fmt.Fprintf(os.Stderr, "%s", ce)
-			}
-			if ee, ok := err.(*exec.ExitError); ok {
-				fmt.Fprintf(os.Stderr, "%s", cluster)
-				fmt.Fprintf(os.Stderr, "getConfigMap kubectl error: %s", ee.Stderr)
-			}
-			return nil, err
+	configmap, err := exec.CommandContext(cmdContext, "kubectl", "--context", cluster, "--namespace", application, "get", "configmap", "-l", "richman/role=job-template,app.kubernetes.io/name="+application, "-o", "jsonpath={ .items[0].data.template }").Output()
+	if err != nil {
+		if ce := cmdContext.Err(); ce != nil {
+			fmt.Fprintf(os.Stderr, "%s", ce)
 		}
-		return configmap, err
+		if ee, ok := err.(*exec.ExitError); ok {
+			fmt.Fprintf(os.Stderr, "%s", cluster)
+			fmt.Fprintf(os.Stderr, "getConfigMap kubectl error: %s", ee.Stderr)
+		}
+		return nil, err
 	}
-	return nil, nil
+	return configmap, err
 }

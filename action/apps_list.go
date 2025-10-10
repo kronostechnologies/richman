@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"strings"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,76 +39,6 @@ type Connection struct {
 	KubeConfigPath string
 	ClientSet      *kubernetes.Clientset
 	Cluster        string
-}
-
-func sortApps(appsList *v1.PodList, context string) map[string]App {
-	// Iterate over the apps, extracts the name, place them in a map for sorting
-	mapApps := make(map[string]App)
-
-	//After each iteration, we have an App struct which contain the name, Version, and all the containers
-	// names attached to a pod. A kubeContext struct with the namespace, the cluster and the app name is tagged along.
-	for _, app := range appsList.Items { //If the app already exist, we simply append the containers in its entry
-		appName := GetLabels(app.ObjectMeta)["app.kubernetes.io/name"]
-		if cont, ok := mapApps[appName]; ok {
-			if len(app.ObjectMeta.Labels["app.kubernetes.io/name"]) > 0 && app.ObjectMeta.Labels["app.kubernetes.io/component"] != mapApps[appName].labels["app.kubernetes.io/component"] {
-				mapApps[GetLabels(app.ObjectMeta)["app.kubernetes.io/name"]] = cont
-			}
-		} else {
-			mapApps[appName] = App{
-				name:        app.Spec.Containers[0].Name,
-				labels:      GetLabels(app.ObjectMeta),
-				application: GetLabels(app.ObjectMeta)["app.kubernetes.io/name"],
-				version:     strings.Split(app.Spec.Containers[0].Image, ":")[len(strings.Split(app.Spec.Containers[0].Image, ":"))-1],
-				containers:  app.Spec.Containers,
-				KubeContext: KubeContext{
-					Namespace: app.Namespace,
-					Cluster:   context,
-				},
-			}
-		}
-	}
-	return mapApps
-}
-func GetLabels(metadata metav1.ObjectMeta) map[string]string {
-
-	if metadata.Labels != nil {
-		mapLabels := make(map[string]string)
-		for key, label := range metadata.Labels {
-			mapLabels[key] = label
-		}
-		return mapLabels
-	}
-	return nil
-}
-
-//Print Labels for each pods
-func PrintLabels(mapApps map[string]App) {
-	//Formatting
-	width := "5"
-	fmt.Printf("%-"+width+"s  %s\n", "Label", "Value")
-
-	for key := range mapApps {
-		fmt.Printf("%-"+width+"s  %s\n", key, mapApps[key].version)
-		fmt.Println("---------------------")
-		for k := range mapApps[key].labels {
-			fmt.Printf("name : %s Label: %s", k, mapApps[key].labels[k])
-		}
-	}
-}
-
-func PrintApps(mapApps map[string]App) {
-
-	//Formatting
-	width := "5"
-
-	fmt.Printf("\n%-"+width+"s  %s\n", "APP : ", "CONTAINER  VERSION")
-	fmt.Printf("======================================\n \n")
-	for key := range mapApps {
-		for _, container := range mapApps[key].containers {
-			fmt.Printf("%s : %s %s \n", key, container.Name, strings.Split(container.Image, ":")[len(strings.Split(container.Image, ":"))-1])
-		}
-		fmt.Printf("-------------- \n")
-	}
 }
 
 //Initiate communication with cluster
