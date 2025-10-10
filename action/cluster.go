@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"os/exec"
 
 	"k8s.io/client-go/kubernetes"
@@ -55,6 +56,18 @@ func GetClusterName() string {
 	return TrimClusterName(context)
 }
 
+func (clusterConnection Connection) NewConnection() bool {
+	conn := ConnectCluster()
+	if conn == nil {
+		fmt.Println("Impossible to establish a communication with your cluster at this time")
+		return false
+	}
+	clientCfg, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
+	fmt.Printf("%-v %s", clientCfg, err)
+	fmt.Println("------------")
+	return true
+}
+
 //Remove the line feed on the cluster Name
 func TrimClusterName(cluster []byte) string {
 	if len(cluster) == 0 {
@@ -81,4 +94,22 @@ func GetClientSet(kubeconfigPath string) *kubernetes.Clientset {
 	}
 
 	return clientSet
+}
+
+func GetUser(cluster string) (string, error) {
+	findKubeUserRegex := regexp.MustCompile(`:([^:@]+)@`)
+
+	out, err := exec.Command("kubectl", "config", "view", "-o", "jsonpath={ .contexts[?(@.name == \""+cluster+"\")].context.user }").Output()
+	if err != nil {
+		return "", err
+	}
+	matches := findKubeUserRegex.FindStringSubmatch(string(out))
+	var username string
+	if len(matches) == 2 && matches[1] != "" {
+		username = matches[1]
+	} else {
+		username = os.Getenv("USER")
+	}
+
+	return formatUsername(username), nil
 }
