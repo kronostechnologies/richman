@@ -5,23 +5,13 @@ import (
 	"log"
 	"os"
 	"os/exec"
-
-	v1 "k8s.io/api/core/v1"
+	
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 const kubeFolder = "/.kube/config"
-
-type App struct {
-	name        string
-	application string
-	version     string
-	containers  []v1.Container
-	labels      map[string]string
-	KubeContext KubeContext
-}
 
 type KubeContext struct {
 	Namespace   string
