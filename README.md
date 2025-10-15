@@ -11,22 +11,12 @@ go install
 
 # Usage
 
-
-## List app version overrides in a helmsman toml file
-Reads all pods in your current cluster, and sort them by apps / containers
+## Exec a one-time command for an app
+Applies and attaches to a "Job" template stored in a ConfigMap
 ```
-# Show all apps
-richman apps list
-
-
-PP :   CONTAINER  VERSION                                                                                                                                                                                                                                                      
-======================================                                                                                                                                                                                                                                                                                
-logdna-reporter : logdna-reporter beta2-prerelease                                                                                                                                                                                                                              
---------------                                                                                                                                                                                                                                                                  
-login-frontend : login-frontend version-2.3.1                                                                                                                                                                                                                                   
---------------                                                                                                                                                                                                                                                                  
-pdf-api : pdf-api version-0.0.4    
+richman apps exec '<command>' -a equisoft-connect -c name="myjob" -c cpu="1" -c memory="1G" -c templateparam="value"
 ```
+Template parameter values are found in the ops configmap. They are strings like {{ .cpu }} or {{ .memory }} in the ops configmap itself.
 
 ## Run a one-time job for an app
 Applies and attaches to a "Job" template stored in a ConfigMap
