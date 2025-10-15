@@ -65,3 +65,12 @@ func NewField(node string) (TemplateField, error) {
 		Optional: submatches[1] != "",
 	}, nil
 }
+
+
+func formatUsername(username string) string {
+	invalidCharactersRegex := regexp.MustCompile(`[^a-z0-9-]`)
+
+	lowerUsername := strings.ToLower(username)
+
+	return invalidCharactersRegex.ReplaceAllString(lowerUsername, "-")
+}

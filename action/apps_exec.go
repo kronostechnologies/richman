@@ -29,15 +29,8 @@ func (c *AppsExec) Run() error {
 		ClientSet:      GetClientSet(GetKubeConfigPath()),
 	}
 	currentContext := clientSet.Cluster
-	listApps, err := ListApps(clientSet.ClientSet, c.Application)
 
-	if err != nil {
-		return err
-	}
-
-	mapApps := sortApps(listApps, currentContext)
-
-	configMap, err := getConfigMap(c.Application, mapApps)
+	configMap, err := getConfigMap(c.Application, currentContext)
 	if err != nil {
 		fmt.Println("Config map not existing for this application")
 		return err
@@ -49,8 +42,7 @@ func (c *AppsExec) Run() error {
 	jobTemplate := template.Must(template.New("configmap").Funcs(sprig.TxtFuncMap()).Parse(configMapStr))
 	templateFields := ListTemplateFields(jobTemplate)
 
-	currentApp := mapApps[c.Application]
-	user, err := GetUser(currentApp.KubeContext.Cluster)
+	user, err := GetUser(currentContext)
 	if err != nil {
 		return err
 	}
@@ -85,18 +77,18 @@ func (c *AppsExec) Run() error {
 	if je != nil {
 		return je
 	}
-	deleteJobIfComplete(currentApp, jobName)
+	deleteJobIfComplete(currentContext, c.Application, jobName)
 
-	jobContext, pe := getJobContext(currentApp, tplConfig)
-	jobConfigMap, ae := applyConfig(currentApp, tplConfig)
+	jobContext, pe := getJobContext(currentContext, c.Application, tplConfig)
+	jobConfigMap, ae := applyConfig(currentContext, c.Application, tplConfig)
 	if ae != nil {
 		// Ask to user if he wants to delete the job
-		c := promptChoice("kubectl has failed to replace the existing job. Do you want to delete it (y/[n])?")
-		if len(c) == 0 {
-			c = "n"
+		cs := promptChoice("kubectl has failed to replace the existing job. Do you want to delete it (y/[n])?")
+		if len(cs) == 0 {
+			cs = "n"
 		}
-		if []rune(strings.ToLower(c))[0] == 'y' {
-			de := deleteJob(currentApp, jobName)
+		if []rune(strings.ToLower(cs))[0] == 'y' {
+			de := deleteJob(currentContext, c.Application, jobName)
 			if de != nil {
 				if ee, ok := de.(*exec.ExitError); ok {
 					fmt.Fprintf(os.Stderr, "deleteJob kubectl error: %s", ee.Stderr)
@@ -107,12 +99,12 @@ func (c *AppsExec) Run() error {
 			return ae
 		}
 
-		jobConfigMap, ae = applyConfig(currentApp, tplConfig)
+		jobConfigMap, ae = applyConfig(currentContext, c.Application, tplConfig)
 		if ae != nil {
 			return ae
 		}
 	}
-	jobContext, pe = getJobContext(currentApp, jobConfigMap)
+	jobContext, pe = getJobContext(currentContext, c.Application, jobConfigMap)
 	if pe != nil {
 		if ee, ok := pe.(*exec.ExitError); ok {
 			fmt.Fprintf(os.Stderr, "GetJobContext kubectl error: %s", ee.Stderr)
@@ -124,18 +116,18 @@ func (c *AppsExec) Run() error {
 	signal.Notify(channel, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-channel
-		deleteJob(currentApp, jobName)
+		deleteJob(currentContext, c.Application, jobName)
 		os.Exit(1)
 	}()
 
 	// Wait for pod to be ready (including succeeded state for quick jobs)
-	wpe := waitPod(currentApp, jobContext)
+	wpe := waitPod(currentContext, c.Application, jobContext)
 	if wpe != nil {
 		return wpe
 	}
 
 	// Check pod status and print it
-	status, err := getPodState(currentApp, jobContext)
+	status, err := getPodState(currentContext, c.Application, jobContext)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error getting pod status: %v\n", err)
 	} else {
@@ -143,42 +135,42 @@ func (c *AppsExec) Run() error {
 	}
 
 	if strings.Contains(status, "Failed") {
-		getPodFailureDetails(currentApp, jobContext)
+		getPodFailureDetails(currentContext, c.Application, jobContext)
 	}
 
 	// Get logs (including completed logs) and follow if still running
-	err = getLogs(currentApp, jobContext)
+	err = getLogs(currentContext, c.Application, jobContext)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error getting logs: %v\n", err)
 	}
 
 	// Wait for job completion and then delete
-	err = waitForJobCompletion(currentApp, jobName)
+	err = waitForJobCompletion(currentContext, c.Application, jobName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error waiting for job completion: %v\n", err)
 	}
 
-	return deleteJob(currentApp, jobName)
+	return deleteJob(currentContext, c.Application, jobName)
 }
 
 // getLogs gets the logs from the pod, following if still running
-func getLogs(currentApp App, jobCtx *JobContext) error {
+func getLogs(cluster string, application string, jobCtx *JobContext) error {
 	time.Sleep(1 * time.Second)
 
 	fmt.Printf("Getting logs for pod %s, container %s\n", jobCtx.Pod, jobCtx.Container)
 	
 	var cmd *exec.Cmd
 	// Check pod status to determine if we should follow logs or just get them
-	status, err := getPodState(currentApp, jobCtx)
+	status, err := getPodState(cluster, application, jobCtx)
 	if err != nil {
 		return err
 	}
 	if strings.Contains(status, "Running") {
 		// Container is still running, follow logs
-		cmd = exec.Command("kubectl", "--context", currentApp.KubeContext.Cluster, "--namespace", currentApp.KubeContext.Namespace, "logs", "-f", jobCtx.Pod, "-c", jobCtx.Container)
+		cmd = exec.Command("kubectl", "--context", cluster, "--namespace", application, "logs", "-f", jobCtx.Pod, "-c", jobCtx.Container)
 		fmt.Println("Use Ctrl+C to stop following logs and clean up")
 	} else {
-		cmd = exec.Command("kubectl", "--context", currentApp.KubeContext.Cluster, "--namespace", currentApp.KubeContext.Namespace, "logs", jobCtx.Pod, "-c", jobCtx.Container)
+		cmd = exec.Command("kubectl", "--context", cluster, "--namespace", application, "logs", jobCtx.Pod, "-c", jobCtx.Container)
 	}
 	
 	cmd.Stdout = os.Stdout
@@ -188,10 +180,10 @@ func getLogs(currentApp App, jobCtx *JobContext) error {
 }
 
 // waitForJobCompletion waits for the job to complete (either succeed or fail)
-func waitForJobCompletion(currentApp App, jobName string) error {
+func waitForJobCompletion(cluster string, application string, jobName string) error {
 	for {
 		// Check if job completed successfully
-		cmd := exec.Command("kubectl", "--context", currentApp.KubeContext.Cluster, "--namespace", currentApp.KubeContext.Namespace, "get", "job", jobName, "-o", "jsonpath='{.status.conditions[?(@.type==\"Complete\")].status}'")
+		cmd := exec.Command("kubectl", "--context", cluster, "--namespace", application, "get", "job", jobName, "-o", "jsonpath='{.status.conditions[?(@.type==\"Complete\")].status}'")
 		out, err := cmd.Output()
 		if err != nil {
 			return err
@@ -204,7 +196,7 @@ func waitForJobCompletion(currentApp App, jobName string) error {
 		}
 
 		// Check if job failed
-		cmd = exec.Command("kubectl", "--context", currentApp.KubeContext.Cluster, "--namespace", currentApp.KubeContext.Namespace, "get", "job", jobName, "-o", "jsonpath='{.status.conditions[?(@.type==\"Failed\")].status}'")
+		cmd = exec.Command("kubectl", "--context", cluster, "--namespace", application, "get", "job", jobName, "-o", "jsonpath='{.status.conditions[?(@.type==\"Failed\")].status}'")
 		out, err = cmd.Output()
 		if err != nil {
 			return err
@@ -221,12 +213,12 @@ func waitForJobCompletion(currentApp App, jobName string) error {
 }
 
 // getPodFailureDetails gets and prints the failure reason and message for a failed pod
-func getPodFailureDetails(currentApp App, jobContext *JobContext) {
+func getPodFailureDetails(cluster string, application string, jobContext *JobContext) {
 	// Get pod failure reason
-	reasonCmd := exec.Command("kubectl", "--context", currentApp.KubeContext.Cluster, "--namespace", currentApp.KubeContext.Namespace, "get", "pod", jobContext.Pod, "-o", "jsonpath='{.status.containerStatuses[0].state.terminated.reason}'")
+	reasonCmd := exec.Command("kubectl", "--context", cluster, "--namespace", application, "get", "pod", jobContext.Pod, "-o", "jsonpath='{.status.containerStatuses[0].state.terminated.reason}'")
 	reasonOut, reasonErr := reasonCmd.Output()
-	
-	messageCmd := exec.Command("kubectl", "--context", currentApp.KubeContext.Cluster, "--namespace", currentApp.KubeContext.Namespace, "get", "pod", jobContext.Pod, "-o", "jsonpath='{.status.containerStatuses[0].state.terminated.message}'")
+
+	messageCmd := exec.Command("kubectl", "--context", cluster, "--namespace", application, "get", "pod", jobContext.Pod, "-o", "jsonpath='{.status.containerStatuses[0].state.terminated.message}'")
 	messageOut, messageErr := messageCmd.Output()
 	
 	if reasonErr == nil && len(reasonOut) > 0 {
